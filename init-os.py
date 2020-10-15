@@ -31,8 +31,8 @@ os.system('sudo snap install shutter')
 
 # git
 os.system('sudo apt-get install git -y')
-os.system('git config --global user.name "name"(roman)')
-os.system('git config --global user.email "email"(romaxa83@ukr.net)') 
+os.system('git config --global user.name "roman"')
+os.system('git config --global user.email "romaxa83@ukr.net"')
 os.system('git config --list')
 
 # php

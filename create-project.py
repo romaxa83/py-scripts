@@ -664,6 +664,7 @@ def create_service_mailer():
     hostname: {NAME_PROJECT}__mailer
     ports:
       - {DOMAIN}:8025:8025
+      - {DOMAIN}:1025:1025
 ''')
 
 def create_mailer():
@@ -833,6 +834,11 @@ if IS_LARAVEL_PROJECT:
         lines[key] = f"REDIS_HOST={DOMAIN}\n"
       if 'REDIS_PASSWORD=' in lines[key]:
         lines[key] = f"REDIS_PASSWORD={REDIS_PASSWORD}\n"
+    if IS_MAILER:
+        if 'MAIL_HOST=' in lines[key]:
+            lines[key] = f"MAIL_HOST={DOMAIN}\n"
+        if 'MAIL_PORT=' in lines[key]:
+            lines[key] = f"MAIL_PORT=1025\n"
 
   lines.append(f"\n")
   lines.append(f"DOCKER_BRIDGE={DOMAIN}\n")
