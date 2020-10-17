@@ -87,6 +87,11 @@ os.system('wget -qO - https://download.sublimetext.com/sublimehq-pub.gpg | sudo 
 os.system('sudo apt-add-repository "deb https://download.sublimetext.com/ apt/stable/"')
 os.system('sudo apt install sublime-text -y')
 
+# phpstorm
+os.system('sudo apt install openjdk-11-jre-headless -y')
+os.system('wget https://download-cf.jetbrains.com/webide/PhpStorm-2019.3.2.tar.gz')
+os.system('tar xvf PhpStorm-2019.3.2.tar.gz')
+
 
 # return_code = subprocess.call("docker -v", shell=True) 
 # print(return_code)

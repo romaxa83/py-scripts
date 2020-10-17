@@ -66,7 +66,11 @@ BASE_PROJECT_VERSION = 7
 
 # для базы данных
 DB_DRIVER_MYSQL = 'mysql'
+DB_MYSQL_PORT = '3306'
+DB_MYSQL_PORT_TEST = '33061'
 DB_DRIVER_PGSQL = 'pgsql'
+DB_PGSQL_PORT = '5432'
+DB_PGSQL_PORT_TEST = '54321'
 DB_DRIVER = DB_DRIVER_MYSQL
 DB_VERSION = '5.7'
 DB_NAME = 'db'
@@ -104,6 +108,10 @@ REDIS_PASSWORD = 'secret'
 
 # mailer
 IS_MAILER = True
+
+#for test
+IS_TEST = True
+TEST_PREFIX = 'test'
 #-------------------------------------------------
 #------------------------------- данные для выбора
 DATA_SERVER = {'versions': {'1': SERVER_NGINX,'2': SERVER_APACHE,},'default': '1','title': 'Сервер','title_choice': 'Выбор сервера'}
@@ -112,6 +120,7 @@ DATA_DB = {'versions': {'1': DB_DRIVER_MYSQL,'2': DB_DRIVER_PGSQL,},'default': '
 DATA_NODE_VERSION = {'versions': {'1': '8','2': '12','3': NODE_VERSION,},'default': '3','title': 'NodeJs','title_choice': 'Выбор версии nodejs'}
 DATA_REDIS_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Redis','title_choice': 'Ваш выбор'}
 DATA_MAILER_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Локальный Mailer','title_choice': 'Ваш выбор'}
+DATA_TESTING_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Настроить окружение для тестов','title_choice': 'Ваш выбор'}
 DATA_BASE_PROJECT = {'versions': {'1': 'Laravel (новый)','2': 'Laravel (из репозитория)','3': 'не устанавливать',},'default': '1','title': 'Проект','title_choice': 'Ваш выбор проект'}
 DATA_LARAVEL = {'versions': {'1': '6','2': '7','3': '8',},'default': '2','title': 'Версия Laravel','title_choice': 'Ваш выбор версии'}
 DATA_MYSQL_VERSION = {'versions': {'1': '5.6','2': '5.7','3': '8',},'default': '2','title': 'Версия MySQL','title_choice': 'Ваш выбор версии'}
@@ -193,6 +202,8 @@ if settings:
 
   IS_MAILER = True if choice(DATA_MAILER_CHOICE) == '1' else False
 
+  IS_TEST = True if choice(DATA_TESTING_CHOICE) == '1' else False
+
   # ВЫБОР ОСНОВЫ ДЛЯ ПРОЕКТА
   project = DATA_BASE_PROJECT['versions'][choice(DATA_BASE_PROJECT)]
   if project == DATA_BASE_PROJECT['versions']['1']:
@@ -255,7 +266,7 @@ print(f"Сервер ------------- {green(SERVER)}")
 print(f"База данных -------- {green(DB_DRIVER)}:{green(DB_VERSION)}")
 print(f"    user ----------- {green(DB_USER)}")
 print(f"    password ------- {green(DB_PASSWORD)}")
-print(f"     db ------------ {green(DB_NAME)}")
+print(f"    db ------------- {green(DB_NAME)}")
 print(f"Версия Nodejs ------ {green(NODE_VERSION)}")
 print(f"Redis -------------- {green(IS_REDIS)}")
 print(f"    password ------- {green(REDIS_PASSWORD)}")
@@ -266,6 +277,12 @@ print(f"    dump ----------- {green(IS_DUMP)}")
 print(f"    путь к dump ---- {green(IS_DUMP_PATH)}")
 print(f"Git init ----------- {green(IS_GIT_INIT)}")
 print(f"mailer ------------- {green(IS_MAILER)}")
+print(f"Тестовое окружение - {green(IS_TEST)}")
+if IS_TEST:
+    print(f"Тестовая бд -------- {green(DB_DRIVER)}:{green(DB_VERSION)}")
+    print(f"    user ----------- {green(DB_USER)}")
+    print(f"    password ------- {green(DB_PASSWORD)}")
+    print(f"    db ------------- {green(DB_NAME)}")
 print("===============================================")
 
 # sys.exit()
@@ -498,6 +515,8 @@ fi
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
+alias pa='php artisan'
+alias test='./vendor/bin/phpunit'
 
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
@@ -543,12 +562,12 @@ def create_php_fpm(projects_name, php_version):
 #=====================================================
 # mysql for build
 
-def docker_service_mysql(project_name, domain, db_version, db_user, db_password, db_name):
+def docker_service_mysql(project_name, domain, db_version, db_user, db_password, db_name, service_name, volume_for_service, port):
     return (f'''
-  db:
+  {service_name}:
     image: mysql:{db_version}
-    container_name: {project_name}__db
-    hostname: {project_name}__db
+    container_name: {project_name}__{service_name}
+    hostname: {project_name}__{service_name}
     restart: always
     environment:
       MYSQL_USER: {db_user}
@@ -557,43 +576,69 @@ def docker_service_mysql(project_name, domain, db_version, db_user, db_password,
       MYSQL_ROOT_PASSWORD: {db_password}
       MYSQL_DATABASE: {db_name}
     ports:
-      - {domain}:3306:3306
-    volumes:
-      - ./docker/storage/db:/var/lib/mysql  
+      - {domain}:{port}
+    {volume_for_service} 
 ''')
 
-def create_mysql(projects_name, domain, db_version, db_user, db_passowrd, db_name):
+def create_mysql(projects_name, domain, db_version, db_user, db_passowrd, db_name, service_name, volume_for_service, port):
 
-    return docker_service_mysql(projects_name, domain, db_version, db_user, db_passowrd, db_name)
+    return docker_service_mysql(projects_name, domain, db_version, db_user, db_passowrd, db_name, service_name,
+                                volume_for_service, port)
 #=====================================================
 # postgresql for build
 
-def docker_service_postgresql(project_name, domain, db_version, db_user, db_password, db_name):
+def docker_service_postgresql(project_name, domain, db_version, db_user, db_password, db_name,
+                              service_name, volume_for_service, port):
   return (f'''
-  db:
+  {service_name}:
     image: postgres:{db_version}
-    container_name: {project_name}__db
-    hostname: {project_name}__db
+    container_name: {project_name}__{service_name}
+    hostname: {project_name}__{service_name}
     restart: always
     environment:
       POSTGRES_USER: {db_user}
       POSTGRES_PASSWORD: {db_password}
       POSTGRES_DB: {db_name}
     ports:
-      - {domain}:5432:5432
-    volumes:
-      - ./docker/storage/db:/var/lib/postgresql 
+      - {domain}:{port}
+{volume_for_service} 
 ''')
 
-def create_postgresql(projects_name, domain, db_version, db_user, db_passowrd, db_name):
-
-  return docker_service_postgresql(projects_name, domain, db_version, db_user, db_passowrd, db_name)
+def create_postgresql(projects_name, domain, db_version, db_user, db_passowrd, db_name, service_name, volume_for_service, port):
+  return docker_service_postgresql(projects_name, domain, db_version, db_user, db_passowrd, db_name, service_name,
+                                   volume_for_service, port)
 #=====================================================
-def create_db (db_driver, project_name, domain, db_version,db_user, db_password, db_name):
+def create_db (db_driver, project_name, domain, db_version,db_user, db_password, db_name, type=None):
+
+  inner_data_mysql = '/var/lib/mysql'
+  inner_data_mysql_test = '/var/lib/mysql'
+  inner_data_psql = '/var/lib/postgresql'
+  inner_data_psql_test = '/var/lib/postgresql/data'
+  volume_for_service = (f'''
+    volumes:
+      - ./docker/storage/db:{inner_data_mysql if db_driver == DB_DRIVER_MYSQL else inner_data_psql}
+''')
+
+  port = (f"{DB_MYSQL_PORT}:{DB_MYSQL_PORT}") if db_driver == DB_DRIVER_MYSQL else (f"{DB_PGSQL_PORT}:{DB_PGSQL_PORT}")
+  service_name = 'db'
+  # переопределяем значения если дб для тестов
+  if type and IS_TEST and type == TEST_PREFIX:
+    db_user = TEST_PREFIX
+    db_password = TEST_PREFIX
+    service_name += (f"_{TEST_PREFIX}")
+    port = (f"{DB_MYSQL_PORT_TEST}:{DB_MYSQL_PORT}") if db_driver == DB_DRIVER_MYSQL else (
+        f"{DB_PGSQL_PORT_TEST}:{DB_PGSQL_PORT}")
+    volume_for_service = (f'''
+    tmpfs:
+      - {inner_data_mysql_test if db_driver == DB_DRIVER_MYSQL else inner_data_psql_test}
+    ''')
+
   if db_driver == DB_DRIVER_MYSQL:
-    return create_mysql(project_name, domain, db_version, db_user, db_password, db_name)
-  else:
-    return create_postgresql(project_name, domain, db_version, db_user, db_password, db_name)
+    return create_mysql(project_name, domain, db_version, db_user, db_password, db_name, service_name,
+                        volume_for_service, port)
+  elif db_driver == DB_DRIVER_PGSQL:
+    return create_postgresql(project_name, domain, db_version, db_user, db_password, db_name, service_name,
+                          volume_for_service, port)
 #=====================================================
 # nodejs for build
 
@@ -708,6 +753,9 @@ build:
 ps:
 \tdocker-compose ps
 
+run_test:
+\tdocker-compose run --rm php-fpm ./vendor/bin/phpunit
+
 #=======COMMAND_FOR_APP================
 
 app-init: composer-install project-init perm
@@ -740,6 +788,11 @@ db_bash:
 
 redis_bash:
 \tdocker exec -it $(redis_container) sh
+#=======FOR_TEST=================
+
+test_app_init:
+\tdocker-compose run --rm php-fpm php artisan key:generate --env=testing -n
+\tdocker-compose run --rm php-fpm php artisan migrate -n --env=testing
 #=======INFO===========================
 
 info:
@@ -762,6 +815,7 @@ services:
 {create_server(SERVER, NAME_PROJECT, DOMAIN)}
 {create_php_fpm(NAME_PROJECT, PHP_VERSION)}
 {create_db(DB_DRIVER, NAME_PROJECT, DOMAIN, DB_VERSION, DB_USER , DB_PASSWORD, DB_NAME)}
+{create_db(DB_DRIVER, NAME_PROJECT, DOMAIN, DB_VERSION, DB_USER , DB_PASSWORD, DB_NAME, TEST_PREFIX)}
 {create_node(NAME_PROJECT)}
 {create_redis(NAME_PROJECT, DOMAIN)}
 {create_mailer()}
@@ -775,11 +829,11 @@ networks:
 
 save_file(docker_compose_path, docker_compose_file)
 
+#sys.exit()
+
 # инициализируем git в проекте
 if IS_GIT_INIT:
     os.system(f"git -C {PATH_TO_PROJECT} init")
-
-# sys.exit()
 
 os.system(f"docker-compose -f {docker_compose_path} build")
 os.system(f"docker-compose -f {docker_compose_path} up -d")
@@ -816,13 +870,13 @@ if IS_LARAVEL_PROJECT:
         lines[key] = 'DB_CONNECTION=pgsql\n'
     if 'DB_PORT=' in lines[key]:
       if DB_DRIVER == DB_DRIVER_MYSQL:
-        lines[key] = 'DB_PORT=3306\n'
+        lines[key] = f"DB_PORT={DB_MYSQL_PORT}\n"
       elif DB_DRIVER == DB_DRIVER_PGSQL:
-        lines[key] = 'DB_PORT=5432\n'
+        lines[key] = f"DB_PORT={DB_PGSQL_PORT}\n"
     if 'DB_DATABASE=' in lines[key]:
       lines[key] = f"DB_DATABASE={DB_NAME}\n"
-    if 'DB_HOST=' in lines[key]:
-      lines[key] = f"DB_HOST=${{DOMAIN}}\n"
+    # if 'DB_HOST=' in lines[key]:
+    #   lines[key] = f"DB_HOST=${{DOMAIN}}\n"
     if 'DB_USERNAME=' in lines[key]:
       lines[key] = f"DB_USERNAME={DB_USER}\n"
     if 'DB_PASSWORD=' in lines[key]:
@@ -897,6 +951,56 @@ if IS_LARAVEL_PROJECT:
   save_changes.writelines(lines)
   save_changes.close()
 
+  # НАСТРАИВАЕМ ДЛЯ ТЕСТОВ
+  path_to_env_file_testing = f"{PATH_TO_PROJECT}/.env.testing"
+  if IS_TEST:
+      os.system(f"cp {PATH_TO_PROJECT}/.env.example {PATH_TO_PROJECT}/.env.testing.example")
+      os.system(f"cp {PATH_TO_PROJECT}/.env.example {path_to_env_file_testing}")
+
+      f = open(path_to_env_file_testing, 'r')
+      lines = f.readlines()
+      # Закрываем файл
+      f.close()
+
+      for key in range(len(lines)):
+          if 'APP_NAME=' in lines[key]:
+              lines[key] = f"APP_NAME={NAME_PROJECT.capitalize()}_testing\n"
+          if 'APP_URL=' in lines[key]:
+              lines[key] = f"APP_URL=http://{DOMAIN}\n"
+          if 'APP_ENV=' in lines[key]:
+              lines[key] = f"APP_ENV=testing\n"
+          if 'DB_CONNECTION=' in lines[key]:
+              if DB_DRIVER == DB_DRIVER_MYSQL:
+                  lines[key] = 'DB_CONNECTION=mysql\n'
+              elif DB_DRIVER == DB_DRIVER_PGSQL:
+                  lines[key] = 'DB_CONNECTION=pgsql\n'
+          if 'DB_PORT=' in lines[key]:
+              if DB_DRIVER == DB_DRIVER_MYSQL:
+                  lines[key] = f"DB_PORT={DB_MYSQL_PORT_TEST}\n"
+              elif DB_DRIVER == DB_DRIVER_PGSQL:
+                  lines[key] = f"DB_PORT={DB_PGSQL_PORT_TEST}\n"
+          if 'DB_DATABASE=' in lines[key]:
+              lines[key] = f"DB_DATABASE={DB_NAME}\n"
+          if 'DB_USERNAME=' in lines[key]:
+              lines[key] = f"DB_USERNAME={TEST_PREFIX}\n"
+          if 'DB_PASSWORD=' in lines[key]:
+              lines[key] = f"DB_PASSWORD={TEST_PREFIX}\n"
+          if 'DB_HOST=' in lines[key]:
+              lines[key] = f"DB_HOST={DOMAIN}\n"
+          if IS_MAILER:
+              if 'MAIL_HOST=' in lines[key]:
+                  lines[key] = f"MAIL_HOST={DOMAIN}\n"
+              if 'MAIL_PORT=' in lines[key]:
+                  lines[key] = f"MAIL_PORT=1025\n"
+
+      lines.append(f"\n")
+      lines.append(f"DOCKER_BRIDGE={DOMAIN}\n")
+      lines.append(f"DOCKER_NETWORK={changeIp(DOMAIN)}\n")
+
+      save_changes = open(path_to_env_file_testing, 'w')
+      save_changes.writelines(lines)
+      save_changes.close()
+
   # ПЕРЕСТРАИВАЕМ КОНТЕЙНЕРЫ ПОД LARAVEL
   os.system(f"sudo chmod 777 -R {PATH_TO_PROJECT}/storage")
   os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} build")
@@ -910,6 +1014,11 @@ if IS_LARAVEL_PROJECT:
     print(green('Подымается база данных'))
     time.sleep(15)
     os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm php artisan migrate")
+
+  if IS_TEST:
+      print(green('Инициализируем тестовое окружение'))
+      os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file_testing} run --rm php-fpm php artisan key:generate --env=testing -n")
+      os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file_testing} run --rm php-fpm php artisan migrate -n --env=testing")
 
 # ЗБОРКА ПРОЕКТА ЗАКОНЧЕНА
 
