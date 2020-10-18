@@ -402,7 +402,6 @@ def create_apache(project_name, domain):
 
 # =======================================================
 # php-fpm for build
-
 def php_fpm_file_for_build (path_conf, path_php, path_php_fpm, php_version):
     os.makedirs(path_conf)
     os.makedirs(path_php_fpm)
@@ -561,7 +560,6 @@ def create_php_fpm(projects_name, php_version):
     return docker_service_php_fpm(projects_name, path_to_docker_file_for_context)
 #=====================================================
 # mysql for build
-
 def docker_service_mysql(project_name, domain, db_version, db_user, db_password, db_name, service_name, volume_for_service, port):
     return (f'''
   {service_name}:
@@ -586,7 +584,6 @@ def create_mysql(projects_name, domain, db_version, db_user, db_passowrd, db_nam
                                 volume_for_service, port)
 #=====================================================
 # postgresql for build
-
 def docker_service_postgresql(project_name, domain, db_version, db_user, db_password, db_name,
                               service_name, volume_for_service, port):
   return (f'''
@@ -676,7 +673,6 @@ def create_node(projects_name):
   return docker_service_node(projects_name, path_to_docker_file_for_context) 
 #=====================================================
 # redis for build
-
 def docker_service_redis(project_name, domain):
   return (f'''
   redis:
@@ -800,6 +796,40 @@ info:
 ''')
 
   save_file(f"{PATH_TO_PROJECT}/Makefile", makefile)
+#=====================================================
+# create Readme.md
+def create_readme_file():
+    return f'''# Проект {NAME_PROJECT.capitalize()}
+Стек:
+  - {SERVER}
+  - Php {PHP_VERSION}
+  - {DB_DRIVER} {DB_VERSION}
+  - Nodejs {NODE_VERSION}
+  {'- MailHog' if IS_MAILER else ''}
+  {'- Redis' if IS_MAILER else ''}
+  {(f"- {BASE_PROJECT_NAME} {BASE_PROJECT_VERSION}") if IS_LARAVEL_PROJECT else ''}
+
+#### проект докеризирован,доступны следующие команды
+весь список команд можно посмотреть в Makefile
+
+разворачивание проекта (выполняеться один раз)
+проект будет доступен по http://{DOMAIN}
+```sh
+$ make init
+```
+поднятие сервисов докера
+```sh
+$ make up
+```
+остановка сервисов докера
+```sh
+$ make down
+```
+перестройка сервисов
+```sh
+$ make rebuild
+```
+'''
 #=====================================================
 
 path_to_env_file = f"{PATH_TO_PROJECT}/.env"
@@ -945,7 +975,7 @@ if IS_LARAVEL_PROJECT:
         if f"POSTGRES_PASSWORD: {DB_PASSWORD}" in lines[key]:
             lines[key] = lines[key].replace(f"POSTGRES_PASSWORD: {DB_PASSWORD}", "POSTGRES_PASSWORD: ${DB_PASSWORD}")
         if f"POSTGRES_DB: {DB_NAME}" in lines[key]:
-            lines[key] = lines[key].replace(f"POSTGRES_DB: {DB_NAME}", "POSTGRES_DB: ${DB_DATABASEы}")
+            lines[key] = lines[key].replace(f"POSTGRES_DB: {DB_NAME}", "POSTGRES_DB: ${DB_DATABASE}")
 
   save_changes = open(docker_compose_path, 'w')
   save_changes.writelines(lines)
@@ -1019,9 +1049,39 @@ if IS_LARAVEL_PROJECT:
       print(green('Инициализируем тестовое окружение'))
       os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file_testing} run --rm php-fpm php artisan key:generate --env=testing -n")
       os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file_testing} run --rm php-fpm php artisan migrate -n --env=testing")
+      os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file_testing} run --rm php-fpm php artisan migrate -n --env=testing")
+
+  # устанавливыаем пакеты
+  print(green('устанавливыаем dev пакеты'))
+  os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm composer require --dev barryvdh/laravel-ide-helper")
+  os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm composer require barryvdh/laravel-debugbar --dev")
+  os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm php artisan ide-helper:generate")
+  os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm php artisan ide-helper:meta")
+
+
+# СОЗДАНИЕ README.md
+path_to_readme = f"{PATH_TO_PROJECT}/README.md"
+if os.path.exists(path_to_readme):
+    os.remove(path_to_readme)
+save_file(path_to_readme, create_readme_file())
+
+# СОЗДАНИЕ ИЛИ ДОПОЛНЕНИЕ .gitignore
+path_to_gitignore = f"{PATH_TO_PROJECT}/.gitignore"
+if not os.path.exists(path_to_gitignore):
+    open(path_to_gitignore, 'w').close()
+os.system(f"echo '.idea/' >> {path_to_gitignore}")
+os.system(f"echo 'docker/storage' >> {path_to_gitignore}")
+os.system(f"echo '.env.testing' >> {path_to_gitignore}")
+#добавить gitignore для данных бд
+path_db_data = f"{PATH_TO_PROJECT}/storage/db"
+if os.path.exists(path_db_data):
+    print(path_db_data)
+    file_ignore = '''*
+!.gitignore
+    '''
+    save_file(f"{path_db_data}/.gitignore", file_ignore)
 
 # ЗБОРКА ПРОЕКТА ЗАКОНЧЕНА
-
 all_time = time.time() - start_time
 print(f"Время зборки - {round(all_time, 3)} sec")
 print("Проект готов")
