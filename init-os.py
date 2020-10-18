@@ -54,6 +54,13 @@ os.system('sudo apt install php7.4-gd -y')
 os.system('sudo apt install libapache2-mod-php7.4 -y')
 os.system('sudo apt install php7.4-xdebug -y')
 
+# composer
+os.system('curl -sS https://getcomposer.org/installer -o composer-setup.php')
+os.system('HASH=`curl -sS https://composer.github.io/installer.sig`')
+os.system('php -r "if (hash_file(\'SHA384\', \'composer-setup.php\') === \'$HASH\') { echo \'Installer verified\'; } else { echo \'Installer corrupt\'; unlink(\'composer-setup.php\'); } echo PHP_EOL;"')
+os.system('sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer')
+os.system('composer')
+
 # db-client
 os.system('sudo apt install mysql-client postgresql-client')
 
@@ -62,7 +69,6 @@ os.system('sudo apt update')
 os.system('sudo apt install openvpn -y')
 os.system('sudo apt-get install network-manager-openvpn -y')
 os.system('sudo apt-get install network-manager-openvpn-gnome -y')
-
 
 # install docker
 os.system('curl https://get.docker.com > /tmp/install.sh')
