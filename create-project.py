@@ -61,6 +61,7 @@ def save_file(path_to_file, file):
 # ПЕРЕМЕНЫЕ ДЛЯ ДЕФОЛТНОЙ КОНФИГУРАЦИИ
 # для основы
 IS_LARAVEL_PROJECT = True
+IS_SLIM_PROJECT = False
 BASE_PROJECT_NAME = 'Laravel'
 BASE_PROJECT_VERSION = 7
 
@@ -121,7 +122,7 @@ DATA_NODE_VERSION = {'versions': {'1': '8','2': '12','3': NODE_VERSION,},'defaul
 DATA_REDIS_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Redis','title_choice': 'Ваш выбор'}
 DATA_MAILER_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Локальный Mailer','title_choice': 'Ваш выбор'}
 DATA_TESTING_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Настроить окружение для тестов','title_choice': 'Ваш выбор'}
-DATA_BASE_PROJECT = {'versions': {'1': 'Laravel (новый)','2': 'Laravel (из репозитория)','3': 'не устанавливать',},'default': '1','title': 'Проект','title_choice': 'Ваш выбор проект'}
+DATA_BASE_PROJECT = {'versions': {'1': 'Laravel (новый)','2': 'Laravel (из репозитория)','3': 'Slim (4)','4': 'не устанавливать',},'default': '1','title': 'Проект','title_choice': 'Ваш выбор проект'}
 DATA_LARAVEL = {'versions': {'1': '6','2': '7','3': '8',},'default': '2','title': 'Версия Laravel','title_choice': 'Ваш выбор версии'}
 DATA_MYSQL_VERSION = {'versions': {'1': '5.6','2': '5.7','3': '8',},'default': '2','title': 'Версия MySQL','title_choice': 'Ваш выбор версии'}
 DATA_POSTGRES_VERSION = {'versions': {'1': '10','2': '11','3': '12',},'default': '3','title': 'Версия PostgreSQL','title_choice': 'Ваш выбор версии'}
@@ -169,7 +170,7 @@ if os.path.exists(PATH_TO_PROJECT):
         sys.exit()
 
 
-# #детальный настройки
+#детальные настройки
 settings = True if choice(settings_data) == '1' else False
 if settings:
   print(green('Настройка сервисов для докера'))
@@ -233,7 +234,6 @@ if settings:
     print("---------------------------------------")
     project_from_git = ask('Введите ссылку на репозитрорий')
 
-
     # использование миграций или dump
     run_data = DATA_DB_DATA['versions'][choice(DATA_DB_DATA)]
     if run_data == DATA_DB_DATA['versions']['2']:
@@ -249,7 +249,14 @@ if settings:
     if git_init == DATA_GIT_INIT['versions']['2']:
       IS_GIT_INIT = False
 
-  elif project == DATA_BASE_PROJECT['versions']['3']:    
+  elif project == DATA_BASE_PROJECT['versions']['3']:
+    IS_LARAVEL_PROJECT = False
+    IS_SLIM_PROJECT = True
+    BASE_PROJECT_NAME = 'Slim'
+    BASE_PROJECT_VERSION = None
+    IS_MIGRATE = False
+
+  elif project == DATA_BASE_PROJECT['versions']['4']:
     IS_LARAVEL_PROJECT = False
     BASE_PROJECT_NAME = 'Без проекта'
     BASE_PROJECT_VERSION = None
@@ -285,7 +292,7 @@ if IS_TEST:
     print(f"    db ------------- {green(DB_NAME)}")
 print("===============================================")
 
-# sys.exit()
+#sys.exit()
 
 run_build = True if choice(run_build_data) == '1' else False
 
@@ -463,7 +470,6 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 
 # устанавливаем пает hirak/prestissimo - чтоб ускорить работу composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/bin --filename=composer --quiet \\
-    && composer global require hirak/prestissimo --no-plugins --no-scripts \\
     && rm -rf /root/.composer/cache
 
 WORKDIR /app
@@ -1057,6 +1063,17 @@ if IS_LARAVEL_PROJECT:
   os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm composer require barryvdh/laravel-debugbar --dev")
   os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm php artisan ide-helper:generate")
   os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm php artisan ide-helper:meta")
+
+# ЗБОРКА SLIM
+if IS_SLIM_PROJECT:
+    os.system(f"sudo chmod 777 -R {PATH_TO_PROJECT}/docker")
+    os.system(
+        f"docker-compose -f {docker_compose_path} run --rm php-fpm composer create-project --prefer-dist slim/slim-skeleton")
+    # переносим файлы установленого фреймворка в папку с нашим проектом
+    os.system(f"sudo chmod 777 -R {PATH_TO_PROJECT}/slim-skeleton/")
+    os.system(f"mv {PATH_TO_PROJECT}/slim-skeleton/* {PATH_TO_PROJECT}")
+    os.system(f"mv {PATH_TO_PROJECT}/slim-skeleton/.* {PATH_TO_PROJECT}")
+    os.rmdir(f"{PATH_TO_PROJECT}/slim-skeleton")
 
 
 # СОЗДАНИЕ README.md
