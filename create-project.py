@@ -116,7 +116,7 @@ TEST_PREFIX = 'test'
 #-------------------------------------------------
 #------------------------------- данные для выбора
 DATA_SERVER = {'versions': {'1': SERVER_NGINX,'2': SERVER_APACHE,},'default': '1','title': 'Сервер','title_choice': 'Выбор сервера'}
-DATA_PHP_VERSION = {'versions': {'1': '7.2','2': '7.3','3': PHP_VERSION,},'default': '3','title': 'Версия php','title_choice': 'Выбор версия php'}
+DATA_PHP_VERSION = {'versions': {'1': '7.2','2': '7.3','3': PHP_VERSION, '8.0': '4'},'default': '3','title': 'Версия php','title_choice': 'Выбор версия php'}
 DATA_DB = {'versions': {'1': DB_DRIVER_MYSQL,'2': DB_DRIVER_PGSQL,},'default': '1','title': 'База данных','title_choice': 'Выбор базы данных'}
 DATA_NODE_VERSION = {'versions': {'1': '8','2': '12','3': NODE_VERSION,},'default': '3','title': 'NodeJs','title_choice': 'Выбор версии nodejs'}
 DATA_REDIS_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Redis','title_choice': 'Ваш выбор'}
