@@ -61,6 +61,8 @@ def save_file(path_to_file, file):
 # ПЕРЕМЕНЫЕ ДЛЯ ДЕФОЛТНОЙ КОНФИГУРАЦИИ
 # для основы
 IS_LARAVEL_PROJECT = True
+IS_LARAVEL_PROJECT_FROM_REPOSITORY = False
+REPOSITORY_LINK = ''
 IS_SLIM_PROJECT = False
 BASE_PROJECT_NAME = 'Laravel'
 BASE_PROJECT_VERSION = 7
@@ -116,7 +118,7 @@ TEST_PREFIX = 'test'
 #-------------------------------------------------
 #------------------------------- данные для выбора
 DATA_SERVER = {'versions': {'1': SERVER_NGINX,'2': SERVER_APACHE,},'default': '1','title': 'Сервер','title_choice': 'Выбор сервера'}
-DATA_PHP_VERSION = {'versions': {'1': '7.2','2': '7.3','3': PHP_VERSION, '8.0': '4'},'default': '3','title': 'Версия php','title_choice': 'Выбор версия php'}
+DATA_PHP_VERSION = {'versions': {'1': '7.2','2': '7.3','3': PHP_VERSION, '4':'8.0'},'default': '3','title': 'Версия php','title_choice': 'Выбор версия php'}
 DATA_DB = {'versions': {'1': DB_DRIVER_MYSQL,'2': DB_DRIVER_PGSQL,},'default': '1','title': 'База данных','title_choice': 'Выбор базы данных'}
 DATA_NODE_VERSION = {'versions': {'1': '8','2': '12','3': NODE_VERSION,},'default': '3','title': 'NodeJs','title_choice': 'Выбор версии nodejs'}
 DATA_REDIS_CHOICE = {'versions': {'1': 'Да','2': 'Нет',},'default': '1','title': 'Redis','title_choice': 'Ваш выбор'}
@@ -248,6 +250,15 @@ if settings:
     git_init = DATA_GIT_INIT['versions'][choice(DATA_GIT_INIT)]
     if git_init == DATA_GIT_INIT['versions']['2']:
       IS_GIT_INIT = False
+
+  elif project == DATA_BASE_PROJECT['versions']['2']:
+    IS_LARAVEL_PROJECT = False
+    IS_LARAVEL_PROJECT_FROM_REPOSITORY = True
+    REPOSITORY_LINK = ''
+    print("---------------------------------------")
+    REPOSITORY_LINK = ask('Укажите ссылку для клонирования проекта (git@github.com:adelf/freelance-example.git)')
+    BASE_PROJECT_NAME = 'Slim'
+    BASE_PROJECT_VERSION = None
 
   elif project == DATA_BASE_PROJECT['versions']['3']:
     IS_LARAVEL_PROJECT = False
@@ -1063,6 +1074,12 @@ if IS_LARAVEL_PROJECT:
   os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm composer require barryvdh/laravel-debugbar --dev")
   os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm php artisan ide-helper:generate")
   os.system(f"docker-compose -f {docker_compose_path} --env-file {path_to_env_file} run --rm php-fpm php artisan ide-helper:meta")
+
+# Проект из репозитория
+if IS_LARAVEL_PROJECT_FROM_REPOSITORY:
+    os.system(f"sudo chmod 777 -R {PATH_TO_PROJECT}/docker")
+    os.system(
+        f"git clone {REPOSITORY_LINK} .")
 
 # ЗБОРКА SLIM
 if IS_SLIM_PROJECT:
